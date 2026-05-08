@@ -14,6 +14,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include <stdio.h>
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -54,7 +55,12 @@ int16_t outSWV;
 int16_t n_outSWV;
 
 
+extern float32_t clapInput[320];
+static float32_t clapCentered[BLOCK_SIZE];
 
+float32_t clapPower = 0.0f;
+uint8_t clapDetected = 0;
+uint32_t clapBlockIndex = 0;
 extern float32_t testInput_f32_1kHz_15kHz[TEST_LENGTH_SAMPLES];
 extern float32_t refOutput[TEST_LENGTH_SAMPLES];
 
@@ -87,6 +93,14 @@ static void MX_TIM7_Init(void);
 uint32_t blockSize = BLOCK_SIZE;
 uint32_t numBlocks = TEST_LENGTH_SAMPLES / BLOCK_SIZE;
 float32_t snr;
+int _write(int file, char *ptr, int len)
+{
+  for (int i = 0; i < len; i++)
+  {
+    ITM_SendChar((*ptr++));
+  }
+  return len;
+}
 /* USER CODE END 0 */
 
 /**
@@ -154,6 +168,34 @@ int main(void)
   {
     while (1);
   }
+  printf("clapInput[120] = %ld\r\n", (int32_t)(clapInput[120] * 1000));
+  printf("clapInput[121] = %ld\r\n", (int32_t)(clapInput[121] * 1000));
+  printf("clapInput[122] = %ld\r\n", (int32_t)(clapInput[122] * 1000));
+  /* Détection de clap avec CMSIS-DSP */
+  for (i = 0; i < numBlocks; i++)
+  {
+    /* Utilisation de arm_offset_f32 */
+    arm_offset_f32(&clapInput[i * BLOCK_SIZE],
+                   0.0f,
+                   clapCentered,
+                   BLOCK_SIZE);
+
+    /* Utilisation de arm_power_f32 */
+    arm_power_f32(clapCentered,
+                  BLOCK_SIZE,
+                  &clapPower);
+
+    if (clapPower > 2.0f)
+    {
+      clapDetected = 1;
+      clapBlockIndex = i;
+      break;
+    }
+  }
+  printf("Clap detected = %d\r\n", clapDetected);
+  printf("Block index = %lu\r\n", clapBlockIndex);
+  printf("Power x1000 = %ld\r\n", (int32_t)(clapPower * 1000.0f));
+
 
   for (i = 0; i < TEST_LENGTH_SAMPLES; i++)
   {
