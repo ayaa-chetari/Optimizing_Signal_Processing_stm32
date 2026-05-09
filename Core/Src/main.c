@@ -199,7 +199,7 @@ int main(void)
 
   for (i = 0; i < TEST_LENGTH_SAMPLES; i++)
   {
-    out12bit[i] = (uint16_t)(2048 + 1024 * testOutput[i]);
+    out12bit[i] = (uint16_t)(2048 + 1024 * clapInput[i]);
   }
 
   if (HAL_TIM_Base_Start_IT(&htim7) != HAL_OK)

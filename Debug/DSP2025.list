@@ -1589,8 +1589,8 @@ int main(void)
  8001188:	61fb      	str	r3, [r7, #28]
  800118a:	e019      	b.n	80011c0 <main+0x1d8>
   {
-    out12bit[i] = (uint16_t)(2048 + 1024 * testOutput[i]);
- 800118c:	4a37      	ldr	r2, [pc, #220]	@ (800126c <main+0x284>)
+    out12bit[i] = (uint16_t)(2048 + 1024 * clapInput[i]);
+ 800118c:	4a3f      	ldr	r2, [pc, #252]	@ (800128c <main+0x2a4>)
  800118e:	69fb      	ldr	r3, [r7, #28]
  8001190:	009b      	lsls	r3, r3, #2
  8001192:	4413      	add	r3, r2
