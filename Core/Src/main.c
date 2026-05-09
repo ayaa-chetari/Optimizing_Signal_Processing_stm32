@@ -61,6 +61,15 @@ static float32_t clapCentered[BLOCK_SIZE];
 float32_t clapPower = 0.0f;
 uint8_t clapDetected = 0;
 uint32_t clapBlockIndex = 0;
+static float32_t realtimeBlock[BLOCK_SIZE];
+static float32_t realtimeCentered[BLOCK_SIZE];
+
+uint32_t realtimeSampleIndex = 0;
+uint32_t realtimeBlockIndex = 0;
+
+float32_t realtimePower = 0.0f;
+uint8_t realtimeClapDetected = 0;
+uint32_t realtimeClapCount = 0;
 extern float32_t testInput_f32_1kHz_15kHz[TEST_LENGTH_SAMPLES];
 extern float32_t refOutput[TEST_LENGTH_SAMPLES];
 
@@ -171,31 +180,6 @@ int main(void)
   printf("clapInput[120] = %ld\r\n", (int32_t)(clapInput[120] * 1000));
   printf("clapInput[121] = %ld\r\n", (int32_t)(clapInput[121] * 1000));
   printf("clapInput[122] = %ld\r\n", (int32_t)(clapInput[122] * 1000));
-  /* Détection de clap avec CMSIS-DSP */
-  for (i = 0; i < numBlocks; i++)
-  {
-    /* Utilisation de arm_offset_f32 */
-    arm_offset_f32(&clapInput[i * BLOCK_SIZE],
-                   0.0f,
-                   clapCentered,
-                   BLOCK_SIZE);
-
-    /* Utilisation de arm_power_f32 */
-    arm_power_f32(clapCentered,
-                  BLOCK_SIZE,
-                  &clapPower);
-
-    if (clapPower > 2.0f)
-    {
-      clapDetected = 1;
-      clapBlockIndex = i;
-      break;
-    }
-  }
-  printf("Clap detected = %d\r\n", clapDetected);
-  printf("Block index = %lu\r\n", clapBlockIndex);
-  printf("Power x1000 = %ld\r\n", (int32_t)(clapPower * 1000.0f));
-
 
   for (i = 0; i < TEST_LENGTH_SAMPLES; i++)
   {
@@ -226,14 +210,43 @@ int main(void)
     /* USER CODE BEGIN 3 */
 	  if (flagSWV == 1)
 	  {
-	    outSWV = out12bit[n_outSWV++ % TEST_LENGTH_SAMPLES];
-
-	    if (n_outSWV % TEST_LENGTH_SAMPLES == 0)
-	    {
-	      n_outSWV = 0;
-	    }
+	    float32_t sample;
 
 	    flagSWV = 0;
+
+	    sample = clapInput[realtimeSampleIndex++ % TEST_LENGTH_SAMPLES];
+
+	    outSWV = (int16_t)(2048 + 1024 * sample);
+
+	    realtimeBlock[realtimeBlockIndex++] = sample;
+
+	    if (realtimeBlockIndex >= BLOCK_SIZE)
+	    {
+	      arm_offset_f32(realtimeBlock,
+	                     0.0f,
+	                     realtimeCentered,
+	                     BLOCK_SIZE);
+
+	      arm_power_f32(realtimeCentered,
+	                    BLOCK_SIZE,
+	                    &realtimePower);
+
+	      if (realtimePower > 2.0f)
+	      {
+	        realtimeClapDetected = 1;
+	        realtimeClapCount++;
+
+	        printf("CLAP detected | Count = %lu | Power x1000 = %ld\r\n",
+	               realtimeClapCount,
+	               (int32_t)(realtimePower * 1000.0f));
+	      }
+	      else
+	      {
+	        realtimeClapDetected = 0;
+	      }
+
+	      realtimeBlockIndex = 0;
+	    }
 	  }
   /* USER CODE END 3 */
 }
@@ -313,7 +326,8 @@ static void MX_DAC_Init(void)
 
   /** DAC channel OUT1 config
   */
-  sConfig.DAC_Trigger = DAC_TRIGGER_NONE;
+  /*sConfig.DAC_Trigger = DAC_TRIGGER_NONE;*/
+  sConfig.DAC_Trigger = DAC_TRIGGER_T7_TRGO;
   sConfig.DAC_OutputBuffer = DAC_OUTPUTBUFFER_ENABLE;
   if (HAL_DAC_ConfigChannel(&hdac, &sConfig, DAC_CHANNEL_1) != HAL_OK)
   {
@@ -343,9 +357,9 @@ static void MX_TIM7_Init(void)
 
   /* USER CODE END TIM7_Init 1 */
   htim7.Instance = TIM7;
-  htim7.Init.Prescaler = 10000;
+  htim7.Init.Prescaler = 100;
   htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim7.Init.Period = 8400;
+  htim7.Init.Period = 840;
   htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
   {
