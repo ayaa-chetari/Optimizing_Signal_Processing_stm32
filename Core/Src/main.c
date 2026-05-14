@@ -99,9 +99,6 @@ int main(void)
   /* USER CODE BEGIN 2 */
   uint32_t i;
 
-  printf("clapInput[120] = %ld\r\n", (int32_t)(clapInput[120] * 1000));
-  printf("clapInput[121] = %ld\r\n", (int32_t)(clapInput[121] * 1000));
-  printf("clapInput[122] = %ld\r\n", (int32_t)(clapInput[122] * 1000));
 
   arm_scale_f32(clapInput,
                 1024.0f,
@@ -141,65 +138,66 @@ int main(void)
   /* USER CODE END 2 */
 
   while (1)
-  {
-    /* USER CODE BEGIN 3 */
-
-    if (flagSWV == 1)
     {
-      float32_t sample;
-      uint32_t dacIndex;
-      uint32_t adcIndex;
+      /* USER CODE BEGIN 3 */
 
-      flagSWV = 0;
-
-      dacIndex = realtimeSampleIndex % TEST_LENGTH_SAMPLES;
-      adcIndex = realtimeSampleIndex % BLOCK_SIZE;
-
-      sample = clapInput[dacIndex];
-
-      outSWV = out12bit[dacIndex];
-      inSWV  = in12bit[adcIndex];
-
-      realtimeSampleIndex++;
-
-      realtimeBlock[realtimeBlockIndex++] = sample;
-
-      if (realtimeBlockIndex >= BLOCK_SIZE)
+      // Le Timer 7 donne le tempo (1000 fois par seconde)
+      if (flagSWV == 1)
       {
-        arm_offset_f32(realtimeBlock,
-                       0.0f,
-                       realtimeCentered,
-                       BLOCK_SIZE);
+        flagSWV = 0;
 
-        arm_power_f32(realtimeCentered,
-                      BLOCK_SIZE,
-                      &realtimePower);
+        // 1. On lit la valeur brute mise à disposition par le DMA
+        uint32_t adcIndex = realtimeSampleIndex % BLOCK_SIZE;
+        uint16_t rawValue = in12bit[adcIndex];
 
-        if (realtimePower > 2.0f)
+        // On met à jour la variable SWV pour continuer à voir le graphique rouge
+        inSWV = rawValue;
+        realtimeSampleIndex++;
+
+        // 2. On ajoute la valeur convertie en float dans notre bloc de calcul
+        realtimeBlock[realtimeBlockIndex++] = (float32_t)rawValue;
+
+        // 3. Dès qu'on a collecté 32 échantillons (toutes les 32 millisecondes)
+        if (realtimeBlockIndex >= BLOCK_SIZE)
         {
-          realtimeClapDetected = 1;
-          realtimeClapCount++;
+          float32_t meanValue = 0.0f;
 
-          printf("CLAP detected | Count = %lu | Power x1000 = %ld\r\n",
-                 realtimeClapCount,
-                 (int32_t)(realtimePower * 1000.0f));
-        }
-        else
-        {
-          realtimeClapDetected = 0;
-        }
+          // --- TRAITEMENT DSP ---
 
-        realtimeBlockIndex = 0;
+          // A. Calcul de la moyenne (Trouver la ligne de base dynamique, ex: 100)
+          arm_mean_f32(realtimeBlock, BLOCK_SIZE, &meanValue);
+
+          // B. Soustraction de la moyenne (On ramène le silence à un vrai ZÉRO)
+          arm_offset_f32(realtimeBlock, -meanValue, realtimeCentered, BLOCK_SIZE);
+
+          // C. Calcul de la puissance sur le signal parfaitement centré
+          arm_power_f32(realtimeCentered, BLOCK_SIZE, &realtimePower);
+
+          // --- AFFICHAGE POUR CALIBRATION ---
+
+
+          // --- DÉTECTION ---
+
+          // ATTENTION : Ce seuil de 50000.0f est temporaire !
+          if (realtimePower > 2000.0f)
+          {
+            realtimeClapDetected = 1;
+            realtimeClapCount++;
+
+            HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
+            printf(">>> CLAP DETECTE ! Count = %lu <<<\r\n", realtimeClapCount);
+          }
+          else
+          {
+            realtimeClapDetected = 0;
+          }
+
+          // On remet le compteur de bloc à zéro pour les 32 prochains échantillons
+          realtimeBlockIndex = 0;
+        }
       }
+      /* USER CODE END 3 */
     }
-
-    if (flagADC == 1)
-    {
-      flagADC = 0;
-    }
-
-    /* USER CODE END 3 */
-  }
 }
 
 void SystemClock_Config(void)
@@ -296,9 +294,9 @@ static void MX_TIM7_Init(void)
   TIM_MasterConfigTypeDef sMasterConfig = {0};
 
   htim7.Instance = TIM7;
-  htim7.Init.Prescaler = 10000;
+  htim7.Init.Prescaler = 84-1;
   htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim7.Init.Period = 840;
+  htim7.Init.Period = 1000 -1;
   htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
 
   if (HAL_TIM_Base_Init(&htim7) != HAL_OK)
@@ -388,7 +386,6 @@ void HAL_TIM_PeriodElapsedCallback(TIM_HandleTypeDef *htim)
 
   if (htim->Instance == TIM7)
   {
-    HAL_GPIO_TogglePin(GPIOA, GPIO_PIN_5);
     flagSWV = 1;
   }
 }
