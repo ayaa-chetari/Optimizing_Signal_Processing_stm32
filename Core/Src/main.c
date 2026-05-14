@@ -141,12 +141,12 @@ int main(void)
     {
       /* USER CODE BEGIN 3 */
 
-      // Le Timer 7 donne le tempo (1000 fois par seconde)
+      // Le Timer 7 donne le tempo
       if (flagSWV == 1)
       {
         flagSWV = 0;
 
-        // 1. On lit la valeur brute mise à disposition par le DMA
+        // 1. On lit la valeur brute mise à disposition par le DMA2
         uint32_t adcIndex = realtimeSampleIndex % BLOCK_SIZE;
         uint16_t rawValue = in12bit[adcIndex];
 
@@ -164,21 +164,18 @@ int main(void)
 
           // --- TRAITEMENT DSP ---
 
-          // A. Calcul de la moyenne (Trouver la ligne de base dynamique, ex: 100)
+          // A. Calcul de la moyenne
           arm_mean_f32(realtimeBlock, BLOCK_SIZE, &meanValue);
 
-          // B. Soustraction de la moyenne (On ramène le silence à un vrai ZÉRO)
+          // B. Soustraction de la moyenne
           arm_offset_f32(realtimeBlock, -meanValue, realtimeCentered, BLOCK_SIZE);
 
-          // C. Calcul de la puissance sur le signal parfaitement centré
+          // C. Calcul de la puissance
           arm_power_f32(realtimeCentered, BLOCK_SIZE, &realtimePower);
 
-          // --- AFFICHAGE POUR CALIBRATION ---
 
 
-          // --- DÉTECTION ---
 
-          // ATTENTION : Ce seuil de 50000.0f est temporaire !
           if (realtimePower > 2000.0f)
           {
             realtimeClapDetected = 1;
@@ -192,7 +189,7 @@ int main(void)
             realtimeClapDetected = 0;
           }
 
-          // On remet le compteur de bloc à zéro pour les 32 prochains échantillons
+
           realtimeBlockIndex = 0;
         }
       }
@@ -294,9 +291,9 @@ static void MX_TIM7_Init(void)
   TIM_MasterConfigTypeDef sMasterConfig = {0};
 
   htim7.Instance = TIM7;
-  htim7.Init.Prescaler = 84-1;
+  htim7.Init.Prescaler = 84;
   htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim7.Init.Period = 1000 -1;
+  htim7.Init.Period = 1000;
   htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
 
   if (HAL_TIM_Base_Init(&htim7) != HAL_OK)

@@ -657,7 +657,7 @@ int main(void)
     {
       /* USER CODE BEGIN 3 */
 
-      // Le Timer 7 donne le tempo (1000 fois par seconde)
+      // Le Timer 7 donne le tempo
       if (flagSWV == 1)
  8000720:	4b3f      	ldr	r3, [pc, #252]	@ (8000820 <main+0x1b8>)
  8000722:	f9b3 3000 	ldrsh.w	r3, [r3]
@@ -669,7 +669,7 @@ int main(void)
  800072c:	2200      	movs	r2, #0
  800072e:	801a      	strh	r2, [r3, #0]
 
-        // 1. On lit la valeur brute mise à disposition par le DMA
+        // 1. On lit la valeur brute mise à disposition par le DMA2
         uint32_t adcIndex = realtimeSampleIndex % BLOCK_SIZE;
  8000730:	4b3c      	ldr	r3, [pc, #240]	@ (8000824 <main+0x1bc>)
  8000732:	681b      	ldr	r3, [r3, #0]
@@ -721,7 +721,7 @@ int main(void)
 
           // --- TRAITEMENT DSP ---
 
-          // A. Calcul de la moyenne (Trouver la ligne de base dynamique, ex: 100)
+          // A. Calcul de la moyenne
           arm_mean_f32(realtimeBlock, BLOCK_SIZE, &meanValue);
  8000782:	463b      	mov	r3, r7
  8000784:	461a      	mov	r2, r3
@@ -729,7 +729,7 @@ int main(void)
  8000788:	4829      	ldr	r0, [pc, #164]	@ (8000830 <main+0x1c8>)
  800078a:	f003 fe19 	bl	80043c0 <arm_mean_f32>
 
-          // B. Soustraction de la moyenne (On ramène le silence à un vrai ZÉRO)
+          // B. Soustraction de la moyenne
           arm_offset_f32(realtimeBlock, -meanValue, realtimeCentered, BLOCK_SIZE);
  800078e:	edd7 7a00 	vldr	s15, [r7]
  8000792:	eef1 7a67 	vneg.f32	s15, s15
@@ -739,7 +739,7 @@ int main(void)
  800079e:	4824      	ldr	r0, [pc, #144]	@ (8000830 <main+0x1c8>)
  80007a0:	f003 fe74 	bl	800448c <arm_offset_f32>
 
-          // C. Calcul de la puissance sur le signal parfaitement centré
+          // C. Calcul de la puissance
           arm_power_f32(realtimeCentered, BLOCK_SIZE, &realtimePower);
  80007a4:	4a24      	ldr	r2, [pc, #144]	@ (8000838 <main+0x1d0>)
  80007a6:	2120      	movs	r1, #32
@@ -747,9 +747,8 @@ int main(void)
  80007aa:	f003 fdd3 	bl	8004354 <arm_power_f32>
 
 
-          // --- DÉTECTION ---
 
-          // ATTENTION : Ce seuil de 50000.0f est temporaire !
+
           if (realtimePower > 2000.0f)
  80007ae:	4b22      	ldr	r3, [pc, #136]	@ (8000838 <main+0x1d0>)
  80007b0:	edd3 7a00 	vldr	s15, [r3]
@@ -789,7 +788,7 @@ int main(void)
  80007ec:	701a      	strb	r2, [r3, #0]
           }
 
-          // On remet le compteur de bloc à zéro pour les 32 prochains échantillons
+
           realtimeBlockIndex = 0;
  80007ee:	4b0f      	ldr	r3, [pc, #60]	@ (800082c <main+0x1c4>)
  80007f0:	2200      	movs	r2, #0
@@ -1135,17 +1134,17 @@ static void MX_TIM7_Init(void)
  8000a32:	4b15      	ldr	r3, [pc, #84]	@ (8000a88 <MX_TIM7_Init+0x64>)
  8000a34:	4a15      	ldr	r2, [pc, #84]	@ (8000a8c <MX_TIM7_Init+0x68>)
  8000a36:	601a      	str	r2, [r3, #0]
-  htim7.Init.Prescaler = 84-1;
+  htim7.Init.Prescaler = 84;
  8000a38:	4b13      	ldr	r3, [pc, #76]	@ (8000a88 <MX_TIM7_Init+0x64>)
- 8000a3a:	2253      	movs	r2, #83	@ 0x53
+ 8000a3a:	2254      	movs	r2, #84	@ 0x54
  8000a3c:	605a      	str	r2, [r3, #4]
   htim7.Init.CounterMode = TIM_COUNTERMODE_UP;
  8000a3e:	4b12      	ldr	r3, [pc, #72]	@ (8000a88 <MX_TIM7_Init+0x64>)
  8000a40:	2200      	movs	r2, #0
  8000a42:	609a      	str	r2, [r3, #8]
-  htim7.Init.Period = 1000 -1;
+  htim7.Init.Period = 1000;
  8000a44:	4b10      	ldr	r3, [pc, #64]	@ (8000a88 <MX_TIM7_Init+0x64>)
- 8000a46:	f240 32e7 	movw	r2, #999	@ 0x3e7
+ 8000a46:	f44f 727a 	mov.w	r2, #1000	@ 0x3e8
  8000a4a:	60da      	str	r2, [r3, #12]
   htim7.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
  8000a4c:	4b0e      	ldr	r3, [pc, #56]	@ (8000a88 <MX_TIM7_Init+0x64>)
